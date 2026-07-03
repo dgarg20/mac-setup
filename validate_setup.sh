@@ -2,8 +2,10 @@
 
 # Setup Validation Script
 # Tests the Mac setup to ensure everything is working correctly
-
-set -e
+#
+# Deliberately does NOT use `set -e`: this script's job is to run every
+# check and report a pass/fail summary at the end, so an individual failed
+# check (a missing tool, a missing file) must not abort the whole run.
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -35,7 +37,7 @@ check_command() {
     local cmd=$1
     local name=$2
     total_checks=$((total_checks + 1))
-    
+
     if command -v "$cmd" &> /dev/null; then
         log "✓ $name is installed"
         success_count=$((success_count + 1))
@@ -50,7 +52,7 @@ check_file() {
     local file=$1
     local name=$2
     total_checks=$((total_checks + 1))
-    
+
     if [ -f "$file" ]; then
         log "✓ $name exists"
         success_count=$((success_count + 1))
@@ -65,13 +67,28 @@ check_directory() {
     local dir=$1
     local name=$2
     total_checks=$((total_checks + 1))
-    
+
     if [ -d "$dir" ]; then
         log "✓ $name exists"
         success_count=$((success_count + 1))
         return 0
     else
         error "✗ $name does not exist"
+        return 1
+    fi
+}
+
+check_cask() {
+    local cask=$1
+    local name=$2
+    total_checks=$((total_checks + 1))
+
+    if brew list --cask "$cask" &> /dev/null; then
+        log "✓ $name is installed"
+        success_count=$((success_count + 1))
+        return 0
+    else
+        warn "$name not found (brew cask: $cask)"
         return 1
     fi
 }
@@ -84,7 +101,10 @@ info "Checking essential commands..."
 check_command "brew" "Homebrew"
 check_command "git" "Git"
 check_command "zsh" "Zsh"
+check_command "bash" "Bash (Homebrew)"
+check_command "htop" "htop"
 check_command "code" "VS Code"
+check_command "subl" "Sublime Text"
 check_command "mvn" "Maven"
 check_command "gradle" "Gradle"
 check_command "aws" "AWS CLI"
@@ -94,15 +114,31 @@ check_command "scala" "Scala"
 
 echo ""
 
+# Check GUI apps (Homebrew Cask)
+info "Checking GUI applications..."
+check_cask "brave-browser" "Brave Browser"
+check_cask "firefox" "Firefox"
+check_cask "notion" "Notion"
+check_cask "iterm2" "iTerm2"
+check_cask "slack" "Slack"
+check_cask "intellij-idea" "IntelliJ IDEA"
+check_cask "claude" "Claude (desktop app)"
+check_cask "antigravity" "Google Antigravity"
+check_cask "sequel-ace" "Sequel Ace"
+check_cask "pgadmin4" "pgAdmin"
+check_cask "rancher" "Rancher Desktop"
+
+echo ""
+
 # Check SDKMAN and Java
 info "Checking Java environment..."
 if [ -d "$HOME/.sdkman" ]; then
     log "✓ SDKMAN is installed"
     success_count=$((success_count + 1))
-    
+
     # Source SDKMAN
     source "$HOME/.sdkman/bin/sdkman-init.sh"
-    
+
     if command -v java &> /dev/null; then
         log "✓ Java is available"
         success_count=$((success_count + 1))
@@ -110,6 +146,16 @@ if [ -d "$HOME/.sdkman" ]; then
     else
         error "✗ Java is not available"
     fi
+
+    for version in "21.0.11-amzn" "25.0.3-amzn"; do
+        total_checks=$((total_checks + 1))
+        if [ -d "$HOME/.sdkman/candidates/java/$version" ]; then
+            log "✓ Java $version is installed"
+            success_count=$((success_count + 1))
+        else
+            warn "Java $version not found"
+        fi
+    done
 else
     error "✗ SDKMAN is not installed"
 fi
@@ -124,25 +170,34 @@ check_file "$HOME/.gitconfig" "Git configuration"
 check_file "$HOME/.ssh/config" "SSH configuration"
 check_file "$HOME/.m2/settings.xml" "Maven settings"
 check_file "$HOME/.gradle/gradle.properties" "Gradle properties"
+check_file "$HOME/Library/Application Support/Code/User/settings.json" "VS Code settings"
 
 echo ""
 
-# Check directories
-info "Checking development directories..."
-check_directory "$HOME/Development" "Development directory"
-check_directory "$HOME/Development/projects" "Projects directory"
-check_directory "$HOME/Development/scripts" "Scripts directory"
-check_directory "$HOME/Development/tools" "Tools directory"
+# Check Documents folder structure
+info "Checking Documents folder structure..."
+check_directory "$HOME/Documents/official" "Documents/official"
+check_directory "$HOME/Documents/official/codebase" "Documents/official/codebase"
+check_directory "$HOME/Documents/official/docs" "Documents/official/docs"
+check_directory "$HOME/Documents/official/scripts" "Documents/official/scripts"
+check_directory "$HOME/Documents/official/platforms" "Documents/official/platforms"
+check_directory "$HOME/Documents/official/interview" "Documents/official/interview"
+check_directory "$HOME/Documents/personal" "Documents/personal"
+check_directory "$HOME/Documents/personal/scripts" "Documents/personal/scripts"
+check_directory "$HOME/Documents/personal/platform" "Documents/personal/platform"
+check_directory "$HOME/Documents/personal/practice" "Documents/personal/practice"
+check_directory "$HOME/Documents/personal/interview" "Documents/personal/interview"
+check_directory "$HOME/Documents/docker-volumes" "Documents/docker-volumes"
+check_directory "$HOME/Documents/claude-temp" "Documents/claude-temp"
+check_directory "$HOME/Documents/open-source" "Documents/open-source"
 
 echo ""
 
-# Check utility scripts
+# Check utility scripts (checked into this repo, not generated at runtime)
 info "Checking utility scripts..."
-check_file "$HOME/Development/scripts/dev-status.sh" "Development status script"
-check_file "$HOME/Development/scripts/switch-java.sh" "Java switcher script"
-check_file "$HOME/Development/scripts/clean-dev.sh" "Development cleaner script"
-check_file "$HOME/Development/scripts/create-project.sh" "Project creator script"
-check_file "$HOME/Development/tools/install-vscode-extensions.sh" "VS Code extensions installer"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+check_file "$SCRIPT_DIR/switch-java.sh" "Java switcher script"
+check_file "$SCRIPT_DIR/clean-dev.sh" "Development cleaner script"
 
 echo ""
 
@@ -151,7 +206,7 @@ info "Checking SSH setup..."
 if [ -f "$HOME/.ssh/id_rsa" ]; then
     log "✓ SSH private key exists"
     success_count=$((success_count + 1))
-    
+
     # Check permissions
     perms=$(stat -f "%A" "$HOME/.ssh/id_rsa" 2>/dev/null || echo "unknown")
     if [ "$perms" = "600" ]; then
@@ -186,22 +241,33 @@ total_checks=$((total_checks + 1))
 
 echo ""
 
-# Check Kafka and Pulsar
-info "Checking Kafka and Pulsar..."
-if [ -L "$HOME/Development/tools/kafka" ] && [ -d "$HOME/Development/tools/kafka" ]; then
-    log "✓ Kafka is installed and linked"
+# Check Kafka
+info "Checking Kafka..."
+if [ -d "$HOME/Downloads/kafka_2.13-3.8.1" ] && [ -f "$HOME/Downloads/kafka_2.13-3.8.1/bin/kafka-server-start.sh" ]; then
+    log "✓ Kafka is downloaded and extracted to ~/Downloads/kafka_2.13-3.8.1"
     success_count=$((success_count + 1))
 else
-    warn "Kafka not found or not linked"
+    warn "Kafka not found under ~/Downloads"
 fi
+total_checks=$((total_checks + 1))
 
-if [ -L "$HOME/Development/tools/pulsar" ] && [ -d "$HOME/Development/tools/pulsar" ]; then
-    log "✓ Pulsar is installed and linked"
-    success_count=$((success_count + 1))
+echo ""
+
+# Check Docker images (only meaningful if the docker engine is up)
+info "Checking Docker images..."
+if command -v docker &> /dev/null && docker info &> /dev/null; then
+    for image in "apache/kafka:latest" "mysql:latest" "postgres:latest" "amazon/dynamodb-local:latest" "localstack/localstack:latest" "redis:latest"; do
+        total_checks=$((total_checks + 1))
+        if docker image inspect "$image" &> /dev/null; then
+            log "✓ Docker image present: $image"
+            success_count=$((success_count + 1))
+        else
+            warn "Docker image not found: $image"
+        fi
+    done
 else
-    warn "Pulsar not found or not linked"
+    warn "Docker engine not reachable; skipping image checks. Launch Rancher Desktop first."
 fi
-total_checks=$((total_checks + 2))
 
 echo ""
 
@@ -221,9 +287,8 @@ fi
 echo ""
 info "Next steps:"
 info "1. Restart your terminal or run 'source ~/.zshrc'"
-info "2. Install VS Code extensions: ~/Development/tools/install-vscode-extensions.sh"
-info "3. Configure AWS credentials: aws configure"
-info "4. Generate SSH keys if needed: ~/.ssh/generate_ssh_key.sh"
-info "5. Check development status: ~/Development/scripts/dev-status.sh"
+info "2. Configure AWS credentials: aws configure"
+info "3. Generate SSH keys if needed: ~/.ssh/generate_ssh_key.sh"
+info "4. Launch Rancher Desktop if Docker images are missing, then re-run this script"
 
 log "Validation completed!"

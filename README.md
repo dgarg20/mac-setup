@@ -7,13 +7,17 @@ A comprehensive collection of bash scripts to automate the setup of a new Mac wi
 This repository contains scripts that will help you set up a complete development environment on macOS, including:
 
 - **Package Management**: Homebrew installation and configuration
-- **Development Tools**: Git, VS Code, iTerm2, Sublime Text
-- **Java Development**: SDKMAN, multiple Java versions, Maven, Gradle
+- **Browsers & Communication**: Brave, Firefox, Notion, iTerm2, Slack
+- **Editors & IDEs**: Sublime Text, VS Code, IntelliJ IDEA, Claude (desktop app), Google Antigravity
+- **Database GUI Tools**: Sequel Ace, pgAdmin
+- **Java Development**: SDKMAN, Java 21 & 25, Maven, Gradle
+- **Other Languages**: Go, Scala
 - **Shell Configuration**: Zsh with Oh My Zsh, custom aliases and functions
 - **Version Control**: Git configuration with useful aliases and settings
-- **SSH Setup**: SSH key management and configuration
+- **SSH Setup**: SSH key management, generation, and configuration
 - **AWS Tools**: AWS CLI installation and setup
-- **Docker Support**: Container development tools
+- **Docker Support**: Rancher Desktop plus a pre-pulled set of common dev images
+- **Documents folder structure**: a consistent `official` / `personal` / `docker-volumes` / `claude-temp` / `open-source` layout with matching shell aliases
 
 ## Quick Start
 
@@ -31,10 +35,15 @@ Every install step checks whether the item is already present before installing 
 
 Before doing any work, `mac_setup.sh` shows a numbered list of everything it will check/install/configure, then asks four questions:
 
-1. **Items to skip** - comma-separated item numbers (e.g. `4.2,7.3,9`) to skip entirely. Skipping a top-level number (e.g. `7`) skips all its sub-items too.
-2. **Config overwrite behavior** (items 12-15) - for each config-writing step, choose whether to replace an existing config file (default, with an automatic `.backup`) or keep it as-is if it already exists.
-3. **RSA SSH key setup** (item 14, only if no key exists yet at `~/.ssh/id_rsa`) - generate a new key pair, or copy one in from another path on disk.
-4. **Git/GitHub identity** (item 13) - the username and email to use for `git config user.name` / `user.email`.
+1. **Items to skip** - comma-separated item numbers to skip entirely. You can mix:
+   - Specific items: `4.2,7.3,9`
+   - Ranges of top-level items: `1-5` skips items 1 through 5 inclusive (and all their sub-items). Ranges are validated (`start >= 1`, `start < end`, `end <= ` the highest item number) - an invalid range like `5-3` or `18-99` is rejected with an error and ignored rather than silently misapplied.
+   - Both together: `1-5,9,12.2`
+
+   Skipping a top-level number (e.g. `6`) skips all its sub-items too (`6.1`, `6.2`, `6.3`).
+2. **Config overwrite behavior** (items 15-18) - for each config-writing step, choose whether to replace an existing config file (default, with an automatic `.backup`) or keep it as-is if it already exists.
+3. **RSA SSH key setup** (item 17, only if no key exists yet at `~/.ssh/id_rsa`) - generate a new key pair, or copy one in from another path on disk.
+4. **Git/GitHub identity** (item 16) - the username and email to use for `git config user.name` / `user.email`.
 
 All four prompts default sensibly and are skipped automatically in non-interactive shells (nothing gets skipped, config files get replaced, new keys get generated).
 
@@ -46,53 +55,67 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 
 ### Configuration Scripts
 
-- **`configure_shell.sh`** - Sets up Zsh with Oh My Zsh, plugins, and useful aliases
+- **`configure_shell.sh`** - Sets up Zsh with Oh My Zsh, plugins, and useful aliases (including shortcuts into the Documents folder structure)
 - **`configure_git.sh`** - Configures Git with user settings, aliases, and global gitignore
 - **`configure_ssh.sh`** - Sets up SSH configuration, key management, permissions, and RSA key generation/copy
-- **`setup_dev_environment.sh`** - Creates development directories, VS Code settings, and utility scripts
+- **`setup_dev_environment.sh`** - Sets up VS Code settings, installs VS Code extensions directly, and configures Maven/Gradle
+
+### Utility Scripts
+
+- **`switch-java.sh`** - Lists installed Java versions via SDKMAN and shows how to switch
+- **`clean-dev.sh`** - Cleans Maven/Gradle caches, prunes Docker, clears npm cache
 
 ### Validation Script
 
-- **`validate_setup.sh`** - Read-only script that checks installed tools, config files, and directories, and reports a pass/fail summary
+- **`validate_setup.sh`** - Read-only script that checks installed tools, config files, and directories, and reports a pass/fail summary. Does not use `set -e`, since its job is to run every check and report a summary rather than abort on the first failure.
 
 ## What Gets Installed
 
 ### Package Manager
-- **Homebrew** - The missing package manager for macOS
+- **Homebrew** - The missing package manager for macOS (installed non-interactively; the "Press RETURN to continue" prompt is bypassed via `NONINTERACTIVE=1`)
 
-### Development Tools
-- **Git** - Version control system
-- **Visual Studio Code** - Code editor with extensions
-- **iTerm2** - Terminal emulator
-- **Sublime Text** - Text editor
-- **Slack** - Team communication and collaboration
-- **Zsh + Oh My Zsh** - Enhanced shell with themes and plugins
+### Essential CLI Tools
+- **Git** - Version control system (installed first, before any GUI apps)
+- **Zsh** - Shell (system default is kept in sync with a Homebrew-managed version)
+- **Bash** - A modern Bash via Homebrew (macOS ships a very old 3.2 by default)
+- **htop** - Interactive process/resource monitor
+
+### Browsers & Communication
+- **Brave Browser**, **Firefox**, **Notion**, **iTerm2**, **Slack**
+
+### Code Editors
+- **Sublime Text**, **Visual Studio Code** (installed after Git)
+
+### IDEs & AI Tools
+- **IntelliJ IDEA**, **Claude** (Anthropic's desktop app), **Google Antigravity**
+
+### Database GUI Tools
+- **Sequel Ace** (MySQL client), **pgAdmin** (PostgreSQL client)
 
 ### Java Development Stack
 - **SDKMAN** - Java version manager
-- **Java 8, 11, 17, 21** - Multiple Java versions (Amazon Corretto)
-- **Maven** - Build automation tool
-- **Gradle** - Build automation tool
-- **Scala** - Functional programming language
+- **Java 21 & 25** (Amazon Corretto)
+- **Maven**, **Gradle** - Build automation tools
 
-### Programming Languages
-- **Go** - Modern programming language for system programming
+### Other Languages
+- **Go** - Latest version via Homebrew
 - **Scala** - Functional programming language for the JVM
 
 ### Message Brokers & Streaming
-- **Apache Kafka** - Distributed streaming platform (downloaded and extracted to `~/Downloads`)
+- **Apache Kafka** - Downloaded and extracted to `~/Downloads` (from `archive.apache.org`, which keeps every historical release permanently - see Troubleshooting below for why the previous mirror URL failed)
 
 ### Cloud & DevOps Tools
-- **AWS CLI** - Amazon Web Services command line interface
-- **Rancher Desktop** - Container management and Kubernetes
-- **Docker** - Container development tools (via Rancher Desktop)
+- **AWS CLI**
+- **Rancher Desktop** - Container runtime, installed last so nothing earlier in the script blocks waiting on it
+- **Docker images** - pulled after Rancher Desktop: `apache/kafka`, `mysql`, `postgres`, `amazon/dynamodb-local`, `localstack` (for SQS), `redis`
 
 ## Configuration Details
 
 ### Shell Configuration (Zsh)
 - **Theme**: robbyrussell (Oh My Zsh default)
-- **Plugins**: git, brew, macos, docker, aws, gradle, maven
-- **Custom aliases** for common commands
+- **Plugins**: git, brew, macos, docker, aws, gradle (`maven` is intentionally omitted - Oh My Zsh does not ship a `maven` plugin, and including it produces a `plugin 'maven' not found` error on `source ~/.zshrc`)
+- **Custom aliases** for common commands, git, and Docker
+- **Documents folder shortcuts** (see below)
 - **History configuration** with search and sharing
 - **Auto-completion** with case-insensitive matching
 
@@ -111,31 +134,51 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 - **SSH key generation helper script** (`~/.ssh/generate_ssh_key.sh`) for manual regeneration later
 
 ### Development Environment
-- **Directory structure**: ~/Development/{projects,tools,scripts,workspace}
-- **VS Code settings** optimized for Java development
-- **Maven settings** with Java 21 as default
-- **Gradle properties** with performance optimizations
-- **Utility scripts** for common development tasks
+- **VS Code settings** optimized for Java development (Java 21/25 runtimes, Maven/Gradle paths)
+- **VS Code extensions installed directly** via `code --install-extension` (not just a script left behind for you to run manually - see Troubleshooting if `code` isn't found)
+- **Maven settings** (`~/.m2/settings.xml`)
+- **Gradle properties** (`~/.gradle/gradle.properties`) with performance optimizations
 
-## Directory Structure Created
+## Documents Folder Structure
+
+`mac_setup.sh` creates a consistent structure under `~/Documents` (note: this replaces the old `~/Development` folder from earlier versions of this script, which is no longer created):
 
 ```
-~/Development/
-├── projects/          # Your development projects
-├── tools/            # Development tools and utilities
-├── scripts/          # Utility scripts
-└── workspace/        # Temporary workspace
-
-~/Development/scripts/
-├── switch-java.sh    # Switch between Java versions
-├── clean-dev.sh      # Clean development caches
-├── dev-status.sh     # Show environment status
-└── create-project.sh # Create new projects
-
-~/Development/tools/
-├── vscode-extensions.txt           # List of VS Code extensions
-└── install-vscode-extensions.sh   # Install VS Code extensions
+~/Documents/
+├── official/
+│   ├── codebase/
+│   ├── docs/
+│   ├── scripts/
+│   ├── platforms/
+│   └── interview/
+├── personal/
+│   ├── scripts/
+│   ├── platform/
+│   ├── practice/
+│   └── interview/
+├── docker-volumes/
+├── claude-temp/
+└── open-source/
 ```
+
+Matching `cd` aliases are added to `~/.zshrc` (official-side aliases use the bare name, personal-side aliases are prefixed with `p`):
+
+| Directory | Alias |
+|---|---|
+| `~/Documents/official` | `official` |
+| `~/Documents/official/codebase` | `codebase` |
+| `~/Documents/official/docs` | `docs` |
+| `~/Documents/official/scripts` | `scripts` |
+| `~/Documents/official/platforms` | `platforms` |
+| `~/Documents/official/interview` | `interview` |
+| `~/Documents/personal` | `personal` |
+| `~/Documents/personal/scripts` | `pscripts` |
+| `~/Documents/personal/platform` | `pplatform` |
+| `~/Documents/personal/practice` | `ppractice` |
+| `~/Documents/personal/interview` | `pinterview` |
+| `~/Documents/docker-volumes` | `dockervolumes` |
+| `~/Documents/claude-temp` | `claudetemp` |
+| `~/Documents/open-source` | `opensource` |
 
 ## Usage Examples
 
@@ -151,30 +194,24 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 # Configure SSH only
 ./configure_ssh.sh
 
-# Setup development environment only
+# Setup development environment only (VS Code settings/extensions, Maven, Gradle)
 ./setup_dev_environment.sh
 ```
 
 ### Using Utility Scripts
 
 ```bash
-# Check development environment status
-~/Development/scripts/dev-status.sh
-
 # Switch Java versions
-~/Development/scripts/switch-java.sh
+./switch-java.sh
 
 # Clean development caches
-~/Development/scripts/clean-dev.sh
-
-# Create a new project
-~/Development/scripts/create-project.sh
-
-# Install VS Code extensions
-~/Development/tools/install-vscode-extensions.sh
+./clean-dev.sh
 
 # Generate SSH keys
 ~/.ssh/generate_ssh_key.sh
+
+# Validate the whole setup
+./validate_setup.sh
 ```
 
 ### Git Aliases
@@ -200,6 +237,9 @@ gs              # git status
 dps             # docker ps
 dcup            # docker-compose up
 code.           # code . (open current directory in VS Code)
+scripts         # cd ~/Documents/official/scripts
+pscripts        # cd ~/Documents/personal/scripts
+dockervolumes   # cd ~/Documents/docker-volumes
 ```
 
 ## Customization
@@ -210,35 +250,48 @@ Just answer the "Git/GitHub identity" prompt when running `mac_setup.sh` - no fi
 
 ### Adding More Software
 
-Add applications to the `CASK_APPS` associative array in `mac_setup.sh` (and add a matching menu line / loop entry with the next available item number):
+GUI apps are grouped into three associative arrays in `mac_setup.sh` by category - add your app to the relevant one (and add a matching menu line with the next available item number):
 
 ```bash
-declare -A CASK_APPS=(
-    ["4.1"]="visual-studio-code"
-    ["4.2"]="iterm2"
-    ["4.3"]="sublime-text"
-    ["4.4"]="rancher"
+# Browsers & communication (item 4)
+declare -A BROWSER_APPS=(
+    ["4.1"]="brave-browser"
+    ["4.2"]="firefox"
+    ["4.3"]="notion"
+    ["4.4"]="iterm2"
     ["4.5"]="slack"
     ["4.6"]="your-app-here"
 )
+
+# Code editors (item 5)
+declare -A EDITOR_APPS=( ["5.1"]="sublime-text" ["5.2"]="visual-studio-code" )
+
+# IDEs & AI tools (item 6)
+declare -A IDE_APPS=( ["6.1"]="intellij-idea" ["6.2"]="claude" ["6.3"]="antigravity" )
+
+# Database GUI tools (item 19)
+declare -A DB_APPS=( ["19.1"]="sequel-ace" ["19.2"]="pgadmin4" )
 ```
 
 ### Customizing VS Code Extensions
 
-Edit `~/Development/tools/vscode-extensions.txt` to add or remove extensions.
+Edit the `VSCODE_EXTENSIONS` array in `setup_dev_environment.sh`. Extensions are installed directly (`code --install-extension`), skipping any already installed.
 
 ### Adding Java Versions
 
-Modify the `JAVA_VERSIONS` associative array in `mac_setup.sh`:
+Modify the `JAVA_VERSIONS` associative array in `mac_setup.sh` (identifiers are SDKMAN candidate versions - run `sdk list java` to see what's available):
 
 ```bash
 declare -A JAVA_VERSIONS=(
-    ["7.1"]="21.0.8-amzn"
-    ["7.2"]="17.0.16-amzn"
-    ["7.3"]="11.0.28-amzn"
-    ["7.4"]="8.0.462-amzn"
+    ["9.1"]="21.0.11-amzn"
+    ["9.2"]="25.0.3-amzn"
+    ["9.3"]="your-version-here"
 )
 ```
+
+### Customizing Docker Images
+
+Edit the `DOCKER_IMAGES` array in `mac_setup.sh` (item 21, runs after Rancher Desktop is installed).
 
 ## Troubleshooting
 
@@ -248,21 +301,39 @@ declare -A JAVA_VERSIONS=(
    - Ensure you have Xcode Command Line Tools: `xcode-select --install`
    - Check your internet connection
 
-2. **SDKMAN installation fails**
+2. **`command not found` errors partway through the script (brew, sdk, code, mvn, ...)**
+   - This happens when a tool was installed by a previous run of the script but the *current* shell session never sourced its PATH changes. `mac_setup.sh` now sources Homebrew's `shellenv` and SDKMAN's `sdkman-init.sh` unconditionally at the start of the script (not just right after a fresh install), so this shouldn't recur - but if you still hit it, run `source ~/.zshrc` and re-run the script.
+
+3. **`[oh-my-zsh] plugin 'maven' not found` after `source ~/.zshrc`**
+   - Fixed: the `maven` plugin was removed from the Oh My Zsh `plugins=(...)` list in `configure_shell.sh`, since Oh My Zsh doesn't ship one. `gradle` does exist as a plugin and is kept.
+
+4. **Kafka: `tar: Error opening archive: Unrecognized archive format`**
+   - Root cause: the old download URL (`downloads.apache.org`) 404s once a Kafka release is superseded on the fast-mirror network, and `curl` (without `-f`) silently saved the 404 HTML error page as if it were the `.tgz`. Fixed by switching to `archive.apache.org` (which retains every historical release permanently), adding `-f` to `curl` so HTTP errors are caught immediately, and adding a `gzip -t` integrity check before extracting - a corrupt/partial archive from a previous failed run is now detected and automatically re-downloaded instead of producing a cryptic tar error.
+
+5. **Homebrew's "Press RETURN to continue" prompt stalls the script**
+   - Fixed: the Homebrew installer is now invoked with `NONINTERACTIVE=1`, which skips that confirmation.
+
+6. **SDKMAN installation fails**
    - Restart your terminal after installation
    - Source the configuration: `source ~/.zshrc`
 
-3. **SSH keys not working**
+7. **SSH keys not working**
    - Check file permissions: `ls -la ~/.ssh/`
    - Generate new keys: `~/.ssh/generate_ssh_key.sh`
 
-4. **Java versions not switching**
+8. **Java versions not switching**
    - Restart terminal or source: `source ~/.zshrc`
    - Check SDKMAN installation: `sdk version`
 
+9. **VS Code extensions didn't install**
+   - The `code` CLI must be on PATH (installed automatically alongside the VS Code cask). If item 5.2 (VS Code) was skipped or just installed, re-run `./setup_dev_environment.sh`.
+
+10. **Docker image pulls were skipped / "Docker engine did not become ready in time"**
+    - Rancher Desktop needs to be launched from Applications at least once to start its Docker engine; the script waits up to 60 seconds for it. Launch Rancher Desktop, wait for it to finish starting, then re-run item 21 (or the whole script).
+
 ### Getting Help
 
-- **Check environment status**: `~/Development/scripts/dev-status.sh`
+- **Check environment status**: `./validate_setup.sh`
 - **View logs**: Scripts provide colored output with timestamps
 - **Manual installation**: Run individual scripts if the main script fails
 
@@ -281,24 +352,12 @@ declare -A JAVA_VERSIONS=(
 
 ## Manual Software Installation
 
-Some software needs to be installed manually due to licensing or distribution requirements:
-
-### JetBrains IDEs (Manual Download Required)
-
-Download and install the following IDEs from the [JetBrains website](https://www.jetbrains.com/):
-
-- **[IntelliJ IDEA](https://www.jetbrains.com/idea/download/)** - Java/Kotlin IDE
-- **[PyCharm](https://www.jetbrains.com/pycharm/download/)** - Python IDE  
-- **[GoLand](https://www.jetbrains.com/go/download/)** - Go IDE
-
-*Note: Download the `.dmg` files and install manually. Consider getting a JetBrains license or use the Community editions.*
+A couple of things still need to be installed manually since Homebrew doesn't (or shouldn't) manage them:
 
 ### Web Browsers
 
-Download and install from their official websites:
-
-- **[Arc Browser](https://arc.net/)** - Modern, feature-rich browser
-- **[Google Chrome](https://www.google.com/chrome/)** - Popular web browser
+- **[Arc Browser](https://arc.net/)** - not available as a Homebrew cask
+- **Google Chrome** - not automated by this script (Brave and Firefox are); install manually if needed
 
 ### App Store Applications
 
@@ -313,8 +372,8 @@ After running the setup scripts:
 1. **Restart your terminal** or run `source ~/.zshrc`
 2. **Configure AWS credentials**: `aws configure`
 3. **Add SSH keys** to your Git hosting services
-4. **Install VS Code extensions**: `~/Development/tools/install-vscode-extensions.sh`
-5. **Test your setup**: `~/Development/scripts/dev-status.sh`
+4. **Launch Rancher Desktop** (if item 20 ran) so item 21's Docker image pulls can complete, or re-run the script afterward
+5. **Test your setup**: `./validate_setup.sh`
 6. **Install manual software** from the section above
 
 ## Contributing

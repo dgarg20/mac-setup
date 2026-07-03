@@ -117,7 +117,6 @@ plugins=(
     docker
     aws
     gradle
-    maven
 )
 
 source $ZSH/oh-my-zsh.sh
@@ -181,6 +180,24 @@ alias dcdown='docker-compose down'
 # Development aliases
 alias code.='code .'
 alias subl.='subl .'
+
+# Documents folder shortcuts (see mac_setup.sh step for directory creation)
+alias official='cd ~/Documents/official'
+alias codebase='cd ~/Documents/official/codebase'
+alias docs='cd ~/Documents/official/docs'
+alias scripts='cd ~/Documents/official/scripts'
+alias platforms='cd ~/Documents/official/platforms'
+alias interview='cd ~/Documents/official/interview'
+
+alias personal='cd ~/Documents/personal'
+alias pscripts='cd ~/Documents/personal/scripts'
+alias pplatform='cd ~/Documents/personal/platform'
+alias ppractice='cd ~/Documents/personal/practice'
+alias pinterview='cd ~/Documents/personal/interview'
+
+alias dockervolumes='cd ~/Documents/docker-volumes'
+alias claudetemp='cd ~/Documents/claude-temp'
+alias opensource='cd ~/Documents/open-source'
 
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
