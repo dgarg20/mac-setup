@@ -128,6 +128,7 @@ check_cask "claude" "Claude (desktop app)"
 check_cask "antigravity" "Google Antigravity"
 check_cask "sequel-ace" "Sequel Ace"
 check_cask "pgadmin4" "pgAdmin"
+check_cask "dbeaver-community" "DBeaver"
 check_cask "rancher" "Rancher Desktop"
 
 echo ""

@@ -90,7 +90,7 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 - **IntelliJ IDEA**, **Claude** (Anthropic's desktop app), **Google Antigravity**
 
 ### Database GUI Tools
-- **Sequel Ace** (MySQL client), **pgAdmin** (PostgreSQL client)
+- **Sequel Ace** (MySQL client), **pgAdmin** (PostgreSQL client), **DBeaver** (universal SQL client)
 
 ### Java Development Stack
 - **SDKMAN** - Java version manager

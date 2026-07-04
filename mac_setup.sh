@@ -177,6 +177,7 @@ print_menu() {
     echo "  19. Database GUI tools (Homebrew Cask)"
     echo "      19.1 Sequel Ace"
     echo "      19.2 pgAdmin"
+    echo "      19.3 DBeaver"
     echo "  20. Rancher Desktop (Docker runtime) - installed last so nothing above"
     echo "      blocks waiting on it"
     echo "  21. Fetch Docker images (Kafka, MySQL, PostgreSQL, DynamoDB Local,"
@@ -879,9 +880,10 @@ log "Checking database GUI tools..."
 declare -A DB_APPS=(
     ["19.1"]="sequel-ace"
     ["19.2"]="pgadmin4"
+    ["19.3"]="dbeaver-community"
 )
 
-for id in 19.1 19.2; do
+for id in 19.1 19.2 19.3; do
     app="${DB_APPS[$id]}"
     if is_skipped "$id"; then
         skip_msg "$id $app"
