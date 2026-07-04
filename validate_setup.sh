@@ -111,6 +111,8 @@ check_command "aws" "AWS CLI"
 check_command "docker" "Docker (via Rancher Desktop)"
 check_command "go" "Go"
 check_command "scala" "Scala"
+check_command "protoc" "protoc (Protocol Buffers)"
+check_command "buf" "buf"
 
 echo ""
 

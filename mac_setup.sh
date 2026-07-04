@@ -125,6 +125,8 @@ print_menu() {
     echo "      10.2 Gradle"
     echo "      10.3 Go (latest)"
     echo "      10.4 Scala"
+    echo "      10.5 protoc (Protocol Buffers compiler)"
+    echo "      10.6 buf (protobuf lint/breaking-change/codegen tooling)"
     echo "  11. AWS CLI"
     echo "  12. Kafka (download and extract)"
     echo "  13. SSH directory setup (~/.ssh)"
@@ -690,6 +692,26 @@ elif ! command -v scala &> /dev/null; then
     brew install scala
 else
     log "Scala already installed"
+fi
+
+# 10.5 protoc (Protocol Buffers compiler)
+if is_skipped "10.5"; then
+    skip_msg "10.5 protoc"
+elif ! command -v protoc &> /dev/null; then
+    log "Installing protoc (protobuf)..."
+    brew install protobuf
+else
+    log "protoc already installed"
+fi
+
+# 10.6 buf (protobuf lint/breaking-change/codegen tooling)
+if is_skipped "10.6"; then
+    skip_msg "10.6 buf"
+elif ! command -v buf &> /dev/null; then
+    log "Installing buf..."
+    brew install buf
+else
+    log "buf already installed"
 fi
 
 # ==============================================================================

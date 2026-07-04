@@ -101,6 +101,10 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 - **Go** - Latest version via Homebrew
 - **Scala** - Functional programming language for the JVM
 
+### Protocol Buffers / gRPC Tooling
+- **protoc** - Protocol Buffers compiler (Homebrew `protobuf` formula)
+- **buf** - Modern protobuf tooling for linting, breaking-change detection, and code generation
+
 ### Message Brokers & Streaming
 - **Apache Kafka** - Downloaded and extracted to `~/Downloads` (from `archive.apache.org`, which keeps every historical release permanently - see Troubleshooting below for why the previous mirror URL failed)
 
