@@ -153,7 +153,7 @@ print_menu() {
     echo "      - Overwrites ~/.gitconfig (existing file backed up to ~/.gitconfig.backup)"
     echo "      - You'll get a 4th prompt asking for your Git/GitHub username and email"
     echo "        to use for user.name / user.email (defaults to 'Deepanshu Garg' /"
-    echo "        'deepanshu.garg@cred.club' if left blank)"
+    echo "        'deepanshu.garg@<...>.com' if left blank)"
     echo "      - Sets default editor/mergetool/difftool to VS Code, credential.helper"
     echo "        = store, git-lfs filters, Bitbucket HTTPS->SSH URL rewrites"
     echo "      - Creates ~/.gitignore_global and sets core.excludesfile to it"
@@ -379,7 +379,7 @@ prompt_for_ssh_key_mode() {
 # what GitHub/Bitbucket/GitLab associate with your account).
 
 GIT_USER_NAME="Deepanshu Garg"
-GIT_USER_EMAIL="deepanshu.garg@cred.club"
+GIT_USER_EMAIL="deepanshu.garg@<...>.com"
 
 prompt_for_git_identity() {
     if is_skipped "16"; then
