@@ -40,7 +40,7 @@ GIT_CONFIG_MODE="${GIT_CONFIG_MODE:-replace}"
 # GitHub/Git identity used for [user] name/email. Overridden by the pre-flight
 # prompt in mac_setup.sh; falls back to these defaults when run standalone.
 GIT_USER_NAME="${GIT_USER_NAME:-Deepanshu Garg}"
-GIT_USER_EMAIL="${GIT_USER_EMAIL:-deepanshu.garg@cred.club}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-deepanshu.garg@<...>.com}"
 
 if [ "$GIT_CONFIG_MODE" = "skip_if_exists" ] && [ -f ~/.gitconfig ]; then
     log "~/.gitconfig already exists; skipping (GIT_CONFIG_MODE=skip_if_exists)"
@@ -58,7 +58,7 @@ cat > ~/.gitconfig << 'EOF'
 # This is Git's per-user configuration file.
 [user]
 	name = Deepanshu Garg
-	email = deepanshu.garg@cred.club
+	email = deepanshu.garg@<...>.com
 
 [core]
 	editor = code --wait
