@@ -124,7 +124,7 @@ All four prompts default sensibly and are skipped automatically in non-interacti
 - **Auto-completion** with case-insensitive matching
 
 ### Git Configuration
-- **User**: prompted interactively at the start of `mac_setup.sh` (defaults to Deepanshu Garg <deepanshu.garg@cred.club> if left blank)
+- **User**: prompted interactively at the start of `mac_setup.sh` (defaults to Deepanshu Garg <deepanshu.garg@<...>.com> if left blank)
 - **Editor**: VS Code
 - **Useful aliases** (st, co, br, lg, etc.)
 - **Global gitignore** for common files
