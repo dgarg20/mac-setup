@@ -21,7 +21,7 @@ The run is interactive at the start (four prompts), then hands-off. It is safe t
 
 - **macOS** (Apple Silicon or Intel)
 - **Internet connection**
-- **No sudo** — everything installs through Homebrew
+- **Run as your normal user, not `sudo`** — everything installs through Homebrew (which refuses to run as root). The script exits immediately if started with `sudo`, since that would write your dotfiles into root's home. The one privileged step (the Xcode Command Line Tools installer) prompts for admin rights on its own.
 - **Xcode Command Line Tools** — required by Homebrew, git, and compilers. On a brand-new Mac these aren't present; the script installs them automatically as step 0 (a macOS dialog appears — click **Install** and accept the license), then waits for them to finish before continuing.
 
 ## Quick Start
@@ -270,6 +270,7 @@ Not handled by Homebrew in this script:
 
 | Problem | What to do |
 |---|---|
+| "Do not run this script as root / with sudo" | Run it as your normal user: `./mac_setup.sh` (no `sudo`). Homebrew won't run as root, and sudo would put your dotfiles in root's home |
 | `xcode-select: no developer tools` / Xcode not found | The script installs the Command Line Tools automatically (step 0). If the dialog was dismissed, run `xcode-select --install`, complete it, then re-run the script |
 | Homebrew install fails | Ensure the Command Line Tools are installed (`xcode-select -p`), check your connection |
 | `command not found` (brew, sdk, mvn, code…) mid-run | Run `source ~/.zshrc` and re-run the script |

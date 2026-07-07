@@ -45,6 +45,18 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
+# Refuse to run as root. Homebrew aborts when run as root, and running the whole
+# script under sudo would write ~/.zshrc, ~/.gitconfig, ~/.ssh, ~/Documents, etc.
+# into root's home (or leave them root-owned), breaking the user's real setup.
+# Nothing here needs sudo up front; the one privileged step (the Xcode Command
+# Line Tools GUI installer) prompts for admin rights on its own.
+if [ "$(id -u)" -eq 0 ]; then
+    error "Do not run this script as root / with sudo."
+    error "Run it as your normal user:  ./mac_setup.sh"
+    error "(Homebrew refuses to run as root, and your dotfiles would be written to root's home.)"
+    exit 1
+fi
+
 # Speed up and quieten the bulk-install phase:
 #  - NO_AUTO_UPDATE stops every single `brew install` from re-running an update
 #    (item 2 still updates Homebrew once, explicitly).
