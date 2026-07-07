@@ -29,7 +29,12 @@ This repository contains scripts that will help you set up a complete developmen
    ```
 4. **Answer the four pre-flight prompts** (see below) before anything runs
 
-Every install step checks whether the item is already present before installing it, so the script is safe to re-run.
+**Robustness / re-runs:**
+- **Idempotent** — every install step checks whether the item is already present first, so the script is safe to run repeatedly.
+- **Best-effort** — a single package that fails to install (network blip, renamed cask, etc.) no longer aborts the run; it's logged, collected, and reported in a summary of failed items at the end so you can retry just those.
+- **Run from anywhere** — the script resolves its own directory, so it can be invoked by absolute path (`bash ~/Documents/scripts/mac_setup/mac_setup.sh`) from any working directory, not only from inside its folder.
+- **Faster/quieter installs** — `HOMEBREW_NO_AUTO_UPDATE` and `HOMEBREW_NO_ENV_HINTS` are set for the bulk-install phase (Homebrew is still updated once, explicitly, at item 2).
+- Runs under `set -eo pipefail`; `set -u` is intentionally not used (incompatible with macOS's built-in bash 3.2 for empty-array expansion).
 
 ### Pre-flight prompts
 
@@ -386,6 +391,7 @@ Feel free to customize these scripts for your own needs. The scripts are designe
 
 - **Idempotent**: Safe to run multiple times
 - **Modular**: Each script can be run independently
+- **Best-effort**: One failed install is logged and reported, not fatal
 - **Documented**: Clear comments and logging
 - **Flexible**: Easy to customize and extend
 
