@@ -8,7 +8,7 @@
 # and the user is shown a numbered list of everything that will be done up front so they
 # can skip specific items (or whole groups) before anything runs.
 
-set -e  # Exit on any error
+set -eo pipefail  # Exit on error; catch failures on the left side of pipes
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,6 +44,71 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     error "This script is designed for macOS only"
     exit 1
 fi
+
+# Absolute path to this script's own directory, so the sub-scripts (item 15-18)
+# can be called regardless of the caller's current working directory. Without
+# this, invoking the script from anywhere other than its own folder aborted the
+# whole run at the first ./configure_*.sh call.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Collects the human labels of anything that failed to install so a summary can
+# be printed at the end. A single failed package must NOT abort the whole run.
+declare -a FAILED_ITEMS=()
+
+# Trim leading/trailing whitespace from $1 using pure bash (no subprocess).
+trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"   # strip leading whitespace
+    s="${s%"${s##*[![:space:]]}"}"   # strip trailing whitespace
+    printf '%s' "$s"
+}
+
+# Install a Homebrew formula idempotently, warning (not aborting) on failure.
+#   brew_formula <formula> <label> [detect_cmd]
+# If detect_cmd is given and already on PATH, the item is considered installed
+# (used e.g. for git, where any git counts). Otherwise `brew list <formula>` is
+# the installed-check (used for zsh/bash, where a system copy always exists).
+brew_formula() {
+    local formula="$1" label="$2" detect="${3:-}"
+    if [ -n "$detect" ] && command -v "$detect" &> /dev/null; then
+        log "$label already installed"
+        return 0
+    fi
+    if brew list "$formula" &> /dev/null; then
+        log "$label already installed"
+        return 0
+    fi
+    log "Installing $label..."
+    brew install "$formula" || { warn "Failed to install $label"; FAILED_ITEMS+=("$label"); }
+}
+
+# Install a Homebrew cask idempotently, warning (not aborting) on failure.
+#   brew_cask <cask> <label>
+brew_cask() {
+    local cask="$1" label="$2"
+    if brew list --cask "$cask" &> /dev/null; then
+        log "$label already installed"
+        return 0
+    fi
+    log "Installing $label..."
+    brew install --cask "$cask" || { warn "Failed to install $label (cask may have been renamed/removed upstream)"; FAILED_ITEMS+=("$label"); }
+}
+
+# Run one of the sibling config scripts by absolute path, with optional inline
+# env assignments, without letting a missing file or a non-zero exit abort the
+# whole setup.
+#   run_subscript <script-name> [VAR=value ...]
+run_subscript() {
+    local script_name="$1"; shift
+    local script_path="$SCRIPT_DIR/$script_name"
+    if [ ! -f "$script_path" ]; then
+        warn "Cannot run $script_name (not found at $script_path); skipping"
+        FAILED_ITEMS+=("$script_name")
+        return 0
+    fi
+    [ -x "$script_path" ] || chmod +x "$script_path" 2>/dev/null || true
+    env "$@" "$script_path" || { warn "$script_name reported an error; continuing"; FAILED_ITEMS+=("$script_name"); }
+}
 
 # Highest top-level item number in the menu below. Used to validate skip
 # ranges like "1-5" entered at the skip-items prompt.
@@ -206,7 +271,7 @@ prompt_for_skips() {
 
     IFS=',' read -ra RAW_SKIPS <<< "$skip_input"
     for raw in "${RAW_SKIPS[@]}"; do
-        trimmed=$(echo "$raw" | xargs)
+        trimmed="$(trim "$raw")"
         if [ -z "$trimmed" ]; then
             continue
         fi
@@ -295,7 +360,7 @@ prompt_for_config_overwrite_mode() {
 
     IFS=',' read -ra RAW_KEEP <<< "$keep_input"
     for raw in "${RAW_KEEP[@]}"; do
-        trimmed=$(echo "$raw" | xargs)
+        trimmed="$(trim "$raw")"
         if [ -n "$trimmed" ]; then
             CONFIG_KEEP_EXISTING_ITEMS+=("$trimmed")
         fi
@@ -431,7 +496,8 @@ else
         log "Installing Homebrew..."
         # NONINTERACTIVE=1 skips Homebrew's "Press RETURN to continue" prompt
         # so the script doesn't stall waiting for a keypress.
-        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+            || { warn "Homebrew installation failed; later brew steps will be skipped/warned"; FAILED_ITEMS+=("Homebrew"); }
     else
         log "Homebrew already installed"
     fi
@@ -439,7 +505,10 @@ else
     # Source unconditionally (fresh install or pre-existing) so every step
     # below this point in the same run has a working `brew` on PATH.
     if [ -d /opt/homebrew/bin ]; then
-        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile 2>/dev/null || true
+        # Append the shellenv line to ~/.zprofile only once (idempotent re-runs).
+        BREW_SHELLENV_LINE='eval "$(/opt/homebrew/bin/brew shellenv)"'
+        grep -qF "$BREW_SHELLENV_LINE" ~/.zprofile 2>/dev/null \
+            || echo "$BREW_SHELLENV_LINE" >> ~/.zprofile
         eval "$(/opt/homebrew/bin/brew shellenv)"
     elif [ -x /usr/local/bin/brew ]; then
         eval "$(/usr/local/bin/brew shellenv)"
@@ -453,7 +522,7 @@ if is_skipped "2"; then
     skip_msg "2. Update Homebrew"
 elif command -v brew &> /dev/null; then
     log "Updating Homebrew..."
-    brew update
+    brew update || warn "brew update failed; continuing with possibly-stale formulae"
 else
     warn "Homebrew not available; skipping update"
 fi
@@ -463,44 +532,33 @@ fi
 # ==============================================================================
 log "Checking essential development tools..."
 
-# 3.1 Git (installed first, since other tools below may depend on it)
+# 3.1 Git (installed first, since other tools below may depend on it).
+# Any git on PATH (e.g. Xcode Command Line Tools) counts as installed.
 if is_skipped "3.1"; then
     skip_msg "3.1 Git"
-elif ! command -v git &> /dev/null; then
-    log "Installing Git..."
-    brew install git
 else
-    log "Git already installed"
+    brew_formula git "Git" git
 fi
 
-# 3.2 Zsh
+# 3.2 Zsh (system zsh always exists, so check brew specifically)
 if is_skipped "3.2"; then
     skip_msg "3.2 Zsh"
-elif ! brew list zsh &> /dev/null; then
-    log "Installing Zsh..."
-    brew install zsh
 else
-    log "Zsh already installed"
+    brew_formula zsh "Zsh"
 fi
 
-# 3.3 Bash (newer version than macOS's built-in bash 3.2)
+# 3.3 Bash (newer version than macOS's built-in bash 3.2; system bash always exists)
 if is_skipped "3.3"; then
     skip_msg "3.3 Bash"
-elif ! brew list bash &> /dev/null; then
-    log "Installing Bash..."
-    brew install bash
 else
-    log "Bash already installed"
+    brew_formula bash "Bash"
 fi
 
 # 3.4 htop
 if is_skipped "3.4"; then
     skip_msg "3.4 htop"
-elif ! brew list htop &> /dev/null; then
-    log "Installing htop..."
-    brew install htop
 else
-    log "htop already installed"
+    brew_formula htop "htop"
 fi
 
 # ==============================================================================
@@ -522,12 +580,7 @@ for id in 4.1 4.2 4.3 4.4 4.5; do
         skip_msg "$id $app"
         continue
     fi
-    if ! brew list --cask "$app" &> /dev/null; then
-        log "Installing $app..."
-        brew install --cask "$app"
-    else
-        log "$app already installed"
-    fi
+    brew_cask "$app" "$app"
 done
 
 # ==============================================================================
@@ -546,12 +599,7 @@ for id in 5.1 5.2; do
         skip_msg "$id $app"
         continue
     fi
-    if ! brew list --cask "$app" &> /dev/null; then
-        log "Installing $app..."
-        brew install --cask "$app"
-    else
-        log "$app already installed"
-    fi
+    brew_cask "$app" "$app"
 done
 
 # ==============================================================================
@@ -571,12 +619,7 @@ for id in 6.1 6.2 6.3; do
         skip_msg "$id $app"
         continue
     fi
-    if ! brew list --cask "$app" &> /dev/null; then
-        log "Installing $app..."
-        brew install --cask "$app" || warn "Failed to install $app (cask may have been renamed/removed upstream)"
-    else
-        log "$app already installed"
-    fi
+    brew_cask "$app" "$app"
 done
 
 # ==============================================================================
@@ -603,7 +646,10 @@ else
     log "Checking SDKMAN..."
     if [ ! -d "$HOME/.sdkman" ]; then
         log "Installing SDKMAN..."
-        curl -s "https://get.sdkman.io" | bash
+        # -fsSL so an HTTP error fails loudly instead of piping an error page to
+        # bash; guarded so a failure warns rather than aborting the whole run.
+        curl -fsSL "https://get.sdkman.io" | bash \
+            || { warn "SDKMAN installation failed; Java version steps will be skipped"; FAILED_ITEMS+=("SDKMAN"); }
     else
         log "SDKMAN already installed"
     fi
@@ -658,61 +704,43 @@ log "Checking build tools..."
 # 10.1 Maven
 if is_skipped "10.1"; then
     skip_msg "10.1 Maven"
-elif ! command -v mvn &> /dev/null; then
-    log "Installing Maven..."
-    brew install maven
 else
-    log "Maven already installed"
+    brew_formula maven "Maven" mvn
 fi
 
 # 10.2 Gradle
 if is_skipped "10.2"; then
     skip_msg "10.2 Gradle"
-elif ! command -v gradle &> /dev/null; then
-    log "Installing Gradle..."
-    brew install gradle
 else
-    log "Gradle already installed"
+    brew_formula gradle "Gradle" gradle
 fi
 
 # 10.3 Go (latest formula version)
 if is_skipped "10.3"; then
     skip_msg "10.3 Go"
-elif ! command -v go &> /dev/null; then
-    log "Installing Go..."
-    brew install go
 else
-    log "Go already installed"
+    brew_formula go "Go" go
 fi
 
 # 10.4 Scala
 if is_skipped "10.4"; then
     skip_msg "10.4 Scala"
-elif ! command -v scala &> /dev/null; then
-    log "Installing Scala..."
-    brew install scala
 else
-    log "Scala already installed"
+    brew_formula scala "Scala" scala
 fi
 
 # 10.5 protoc (Protocol Buffers compiler)
 if is_skipped "10.5"; then
     skip_msg "10.5 protoc"
-elif ! command -v protoc &> /dev/null; then
-    log "Installing protoc (protobuf)..."
-    brew install protobuf
 else
-    log "protoc already installed"
+    brew_formula protobuf "protoc" protoc
 fi
 
 # 10.6 buf (protobuf lint/breaking-change/codegen tooling)
 if is_skipped "10.6"; then
     skip_msg "10.6 buf"
-elif ! command -v buf &> /dev/null; then
-    log "Installing buf..."
-    brew install buf
 else
-    log "buf already installed"
+    brew_formula buf "buf" buf
 fi
 
 # ==============================================================================
@@ -721,15 +749,9 @@ fi
 if is_skipped "11"; then
     skip_msg "11. AWS CLI"
 else
-    log "Checking AWS CLI..."
-    if ! command -v aws &> /dev/null; then
-        log "Downloading and installing AWS CLI..."
-        curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "/tmp/AWSCLIV2.pkg"
-        sudo installer -pkg "/tmp/AWSCLIV2.pkg" -target /
-        rm "/tmp/AWSCLIV2.pkg"
-    else
-        log "AWS CLI already installed"
-    fi
+    # Use the Homebrew formula instead of the .pkg installer: no sudo/password
+    # prompt mid-run, and no risk of a 404 HTML page being saved as the .pkg.
+    brew_formula awscli "AWS CLI" aws
 fi
 
 # ==============================================================================
@@ -824,9 +846,9 @@ if is_skipped "15"; then
 else
     log "Configuring shell..."
     if is_keep_existing "15"; then
-        SHELL_CONFIG_MODE="skip_if_exists" ./configure_shell.sh
+        run_subscript configure_shell.sh SHELL_CONFIG_MODE="skip_if_exists"
     else
-        SHELL_CONFIG_MODE="replace" ./configure_shell.sh
+        run_subscript configure_shell.sh SHELL_CONFIG_MODE="replace"
     fi
 fi
 
@@ -838,9 +860,9 @@ if is_skipped "16"; then
 else
     log "Configuring Git..."
     if is_keep_existing "16"; then
-        GIT_CONFIG_MODE="skip_if_exists" GIT_USER_NAME="$GIT_USER_NAME" GIT_USER_EMAIL="$GIT_USER_EMAIL" ./configure_git.sh
+        run_subscript configure_git.sh GIT_CONFIG_MODE="skip_if_exists" GIT_USER_NAME="$GIT_USER_NAME" GIT_USER_EMAIL="$GIT_USER_EMAIL"
     else
-        GIT_CONFIG_MODE="replace" GIT_USER_NAME="$GIT_USER_NAME" GIT_USER_EMAIL="$GIT_USER_EMAIL" ./configure_git.sh
+        run_subscript configure_git.sh GIT_CONFIG_MODE="replace" GIT_USER_NAME="$GIT_USER_NAME" GIT_USER_EMAIL="$GIT_USER_EMAIL"
     fi
 fi
 
@@ -852,9 +874,9 @@ if is_skipped "17"; then
 else
     log "Configuring SSH..."
     if is_keep_existing "17"; then
-        SSH_CONFIG_MODE="skip_if_exists" SSH_KEY_MODE="$SSH_KEY_MODE" SSH_KEY_SOURCE_PATH="$SSH_KEY_SOURCE_PATH" ./configure_ssh.sh
+        run_subscript configure_ssh.sh SSH_CONFIG_MODE="skip_if_exists" SSH_KEY_MODE="$SSH_KEY_MODE" SSH_KEY_SOURCE_PATH="$SSH_KEY_SOURCE_PATH"
     else
-        SSH_CONFIG_MODE="replace" SSH_KEY_MODE="$SSH_KEY_MODE" SSH_KEY_SOURCE_PATH="$SSH_KEY_SOURCE_PATH" ./configure_ssh.sh
+        run_subscript configure_ssh.sh SSH_CONFIG_MODE="replace" SSH_KEY_MODE="$SSH_KEY_MODE" SSH_KEY_SOURCE_PATH="$SSH_KEY_SOURCE_PATH"
     fi
 fi
 
@@ -866,9 +888,9 @@ if is_skipped "18"; then
 else
     log "Setting up development environment..."
     if is_keep_existing "18"; then
-        DEVENV_CONFIG_MODE="skip_if_exists" ./setup_dev_environment.sh
+        run_subscript setup_dev_environment.sh DEVENV_CONFIG_MODE="skip_if_exists"
     else
-        DEVENV_CONFIG_MODE="replace" ./setup_dev_environment.sh
+        run_subscript setup_dev_environment.sh DEVENV_CONFIG_MODE="replace"
     fi
 fi
 
@@ -889,12 +911,7 @@ for id in 19.1 19.2 19.3; do
         skip_msg "$id $app"
         continue
     fi
-    if ! brew list --cask "$app" &> /dev/null; then
-        log "Installing $app..."
-        brew install --cask "$app"
-    else
-        log "$app already installed"
-    fi
+    brew_cask "$app" "$app"
 done
 
 # ==============================================================================
@@ -904,13 +921,8 @@ if is_skipped "20"; then
     skip_msg "20. Rancher Desktop"
 else
     log "Checking Rancher Desktop..."
-    if ! brew list --cask rancher &> /dev/null; then
-        log "Installing Rancher Desktop..."
-        brew install --cask rancher
-        info "Rancher Desktop installed. Launch it from Applications to start the Docker engine."
-    else
-        log "Rancher Desktop already installed"
-    fi
+    brew_cask rancher "Rancher Desktop"
+    info "If newly installed, launch Rancher Desktop from Applications to start the Docker engine."
 fi
 
 # ==============================================================================
@@ -956,7 +968,14 @@ else
     fi
 fi
 
-log "Mac setup completed successfully!"
+if [ ${#FAILED_ITEMS[@]} -gt 0 ]; then
+    warn "Setup finished, but the following items failed and may need a manual retry:"
+    for item in "${FAILED_ITEMS[@]}"; do
+        warn "  - $item"
+    done
+else
+    log "Mac setup completed successfully!"
+fi
 log "Please restart your terminal or run 'source ~/.zshrc' to apply all changes"
 
 info "Next steps:"

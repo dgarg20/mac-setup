@@ -352,7 +352,7 @@ Edit the `DOCKER_IMAGES` array in `mac_setup.sh` (item 21, runs after Rancher De
 
 - **macOS**: Tested on macOS (Apple Silicon and Intel)
 - **Internet connection**: Required for downloading tools
-- **Admin privileges**: Some installations require sudo access
+- **No sudo required**: All installs go through Homebrew (the AWS CLI now uses the `awscli` formula instead of the sudo `.pkg` installer), so the run is fully unattended
 
 ## Manual Software Installation
 

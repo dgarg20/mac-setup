@@ -235,15 +235,21 @@ if command -v ssh-add &> /dev/null; then
         eval "$(ssh-agent -s)"
     fi
     
-    # Add keys to agent
+    # Add keys to agent. On macOS 12+ the keychain flag is --apple-use-keychain;
+    # -K is deprecated/removed, so try the modern flag first and fall back for
+    # very old machines.
     if [ -f ~/.ssh/id_rsa ]; then
-        ssh-add -K ~/.ssh/id_rsa 2>/dev/null || warn "Could not add id_rsa to ssh-agent"
+        ssh-add --apple-use-keychain ~/.ssh/id_rsa 2>/dev/null \
+            || ssh-add -K ~/.ssh/id_rsa 2>/dev/null \
+            || warn "Could not add id_rsa to ssh-agent"
     fi
-    
+
     # Add other private keys (*.pem files)
     for keyfile in ~/.ssh/*.pem; do
         if [ -f "$keyfile" ] && [[ "$keyfile" != *".pub.pem" ]]; then
-            ssh-add -K "$keyfile" 2>/dev/null || warn "Could not add $(basename "$keyfile") to ssh-agent"
+            ssh-add --apple-use-keychain "$keyfile" 2>/dev/null \
+                || ssh-add -K "$keyfile" 2>/dev/null \
+                || warn "Could not add $(basename "$keyfile") to ssh-agent"
         fi
     done
 else
@@ -286,9 +292,9 @@ ssh-keygen -t rsa -b 4096 -C "$email" -f ~/.ssh/id_rsa
 chmod 600 ~/.ssh/id_rsa
 chmod 644 ~/.ssh/id_rsa.pub
 
-# Add to ssh-agent
+# Add to ssh-agent (modern keychain flag with fallback for old macOS)
 eval "$(ssh-agent -s)"
-ssh-add -K ~/.ssh/id_rsa
+ssh-add --apple-use-keychain ~/.ssh/id_rsa 2>/dev/null || ssh-add -K ~/.ssh/id_rsa
 
 echo ""
 echo "SSH key generated successfully!"
