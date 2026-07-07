@@ -6,6 +6,7 @@ Bash scripts that automate setting up a new Mac for development — installing t
 
 Running `mac_setup.sh` will:
 
+0. Install the Xcode Command Line Tools if they're missing (prerequisite for everything below).
 1. Install Homebrew and a set of CLI tools, browsers, editors, IDEs, and database GUIs.
 2. Install SDKMAN with Java 21 & 25, plus Maven, Gradle, Go, Scala, protoc, and buf.
 3. Install the AWS CLI and Apache Kafka.
@@ -21,17 +22,24 @@ The run is interactive at the start (four prompts), then hands-off. It is safe t
 - **macOS** (Apple Silicon or Intel)
 - **Internet connection**
 - **No sudo** — everything installs through Homebrew
+- **Xcode Command Line Tools** — required by Homebrew, git, and compilers. On a brand-new Mac these aren't present; the script installs them automatically as step 0 (a macOS dialog appears — click **Install** and accept the license), then waits for them to finish before continuing.
 
 ## Quick Start
 
 ```bash
-# 1. Clone or download this repository
+# 1. Get this repository onto the Mac.
+#    On a brand-new Mac without git yet, either:
+#      a) run `git clone ...` — macOS will pop a dialog to install the
+#         Command Line Tools (which include git); accept it, then clone; or
+#      b) download the repo as a ZIP from GitHub and unzip it.
 git clone git@github.com:dgarg20/mac-setup.git
 cd mac-setup
 
 # 2. Run the main script (can also be run by absolute path from anywhere)
 ./mac_setup.sh
 ```
+
+> On a fresh Mac the script's first step installs the Xcode Command Line Tools and waits for them to finish before doing anything else.
 
 The script prints a numbered list of everything it will do, then asks **four prompts** before making any changes:
 
@@ -262,7 +270,8 @@ Not handled by Homebrew in this script:
 
 | Problem | What to do |
 |---|---|
-| Homebrew install fails | Install Xcode CLT (`xcode-select --install`), check your connection |
+| `xcode-select: no developer tools` / Xcode not found | The script installs the Command Line Tools automatically (step 0). If the dialog was dismissed, run `xcode-select --install`, complete it, then re-run the script |
+| Homebrew install fails | Ensure the Command Line Tools are installed (`xcode-select -p`), check your connection |
 | `command not found` (brew, sdk, mvn, code…) mid-run | Run `source ~/.zshrc` and re-run the script |
 | SDKMAN install fails | Restart terminal, then `source ~/.zshrc` |
 | Java version won't switch | `source ~/.zshrc`; check `sdk version` |

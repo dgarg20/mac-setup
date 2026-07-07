@@ -169,6 +169,7 @@ print_menu() {
     echo ""
     echo -e "${BOLD}The following will be checked/installed/configured:${NC}"
     echo ""
+    echo "  0. Xcode Command Line Tools (prerequisite - always installed if missing)"
     echo "  1. Homebrew (package manager)"
     echo "  2. Update Homebrew"
     echo "  3. Essential CLI tools"
@@ -493,6 +494,55 @@ prompt_for_ssh_key_mode
 prompt_for_git_identity
 
 log "Starting Mac Setup Script..."
+
+# ==============================================================================
+# 0. Xcode Command Line Tools (prerequisite for Homebrew, git, compilers)
+# ==============================================================================
+# A brand-new Mac has no compiler toolchain or git until the Command Line Tools
+# (CLT) are installed. Homebrew's own installer needs them, so this must happen
+# before item 1 — otherwise the run fails with errors like "xcode-select: note:
+# no developer tools were found" / "invalid active developer path". This step is
+# always run (not part of the skip list), since nothing else works without it.
+ensure_command_line_tools() {
+    # xcode-select -p prints the active developer dir and returns 0 when either
+    # the CLT or a full Xcode is installed.
+    if xcode-select -p &> /dev/null; then
+        log "Xcode Command Line Tools already installed"
+        return 0
+    fi
+
+    warn "Xcode Command Line Tools not found — these are required for Homebrew, git, and compilers."
+    log "Triggering the Command Line Tools installer..."
+    # This kicks off Apple's GUI installer and returns immediately; it errors
+    # harmlessly if an install is already in progress.
+    xcode-select --install 2> /dev/null || true
+
+    info "A macOS dialog should have appeared. Click \"Install\" and accept the license."
+    info "Waiting for the Command Line Tools install to finish (this can take several minutes)..."
+
+    # Poll until CLT are available, up to ~30 minutes. The loop just sleeps, so
+    # it stays unattended; it exits as soon as the tools appear.
+    local waited=0
+    local max_wait=1800   # 30 minutes
+    while ! xcode-select -p &> /dev/null; do
+        if [ "$waited" -ge "$max_wait" ]; then
+            warn "Command Line Tools still not detected after $((max_wait / 60)) minutes."
+            warn "Finish the installation manually (or run: xcode-select --install), then re-run this script."
+            FAILED_ITEMS+=("Xcode Command Line Tools")
+            return 0
+        fi
+        sleep 15
+        waited=$((waited + 15))
+        # Progress ping roughly once a minute.
+        if [ $((waited % 60)) -eq 0 ]; then
+            info "  ...still waiting for Command Line Tools ($((waited / 60)) min elapsed)"
+        fi
+    done
+
+    log "Xcode Command Line Tools installed"
+}
+
+ensure_command_line_tools
 
 # ==============================================================================
 # 1. Install Homebrew (Package Manager)
