@@ -3,6 +3,9 @@
 # SSH Configuration Script
 # Sets up SSH with proper permissions and configuration
 
+# set -e is wanted here: SSH setup writes files and adjusts permissions, and a
+# failure should stop rather than continue with a half-configured ~/.ssh.
+# (Contrast validate_setup.sh, which deliberately omits it to run every check.)
 set -e
 
 # Colors for output

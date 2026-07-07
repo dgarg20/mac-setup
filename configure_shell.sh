@@ -3,6 +3,9 @@
 # Shell Configuration Script
 # Configures Zsh with Oh My Zsh and necessary environment variables
 
+# set -e is wanted here: this script writes config files, and if a write fails
+# it should stop rather than press on and leave a half-written ~/.zshrc.
+# (Contrast validate_setup.sh, which deliberately omits it to run every check.)
 set -e
 
 # Colors for output

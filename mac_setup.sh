@@ -45,6 +45,13 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
+# Speed up and quieten the bulk-install phase:
+#  - NO_AUTO_UPDATE stops every single `brew install` from re-running an update
+#    (item 2 still updates Homebrew once, explicitly).
+#  - NO_ENV_HINTS suppresses the post-install "next steps" hint spam.
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_ENV_HINTS=1
+
 # Absolute path to this script's own directory, so the sub-scripts (item 15-18)
 # can be called regardless of the caller's current working directory. Without
 # this, invoking the script from anywhere other than its own folder aborted the
@@ -112,6 +119,8 @@ run_subscript() {
 
 # Highest top-level item number in the menu below. Used to validate skip
 # ranges like "1-5" entered at the skip-items prompt.
+# KEEP IN SYNC with print_menu(): if you add/remove a top-level item, bump this
+# number too, or range-skips (e.g. "1-N") will silently cap at the wrong value.
 MAX_ITEM_NUMBER=21
 
 # Source Homebrew/SDKMAN shell integration unconditionally up front, in case
@@ -946,7 +955,7 @@ else
     else
         log "Waiting for Docker engine to become available (up to 60s)..."
         docker_ready=false
-        for i in $(seq 1 12); do
+        for _ in $(seq 1 12); do
             if docker info &> /dev/null; then
                 docker_ready=true
                 break

@@ -3,6 +3,9 @@
 # Development Environment Setup Script
 # Sets up development tools and configurations
 
+# set -e is wanted here: this script writes config files, and a failed write
+# should stop rather than continue with a partially-configured environment.
+# (Contrast validate_setup.sh, which deliberately omits it to run every check.)
 set -e
 
 # Colors for output

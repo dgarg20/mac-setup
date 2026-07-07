@@ -13,7 +13,7 @@ Nothing here is cosmetic-only until the "Low / Nits" section.
 
 ---
 
-## Status (2026-07-03): all findings applied ✅
+## Status (2026-07-03): all findings resolved ✅
 
 | ID | Finding | Status |
 |----|---------|--------|
@@ -24,11 +24,34 @@ Nothing here is cosmetic-only until the "Low / Nits" section.
 | H3 | `ssh-add -K` deprecated | ✅ Fixed — `--apple-use-keychain` with `-K` fallback (all 3 sites incl. the generated helper) |
 | M1 | `~/.zprofile` duplicate append | ✅ Fixed — `grep -qF` guard |
 | M2 | `curl -s \| bash` for SDKMAN | ✅ Fixed — `curl -fsSL` + `|| warn` guard |
-| M3 | Add `set -o pipefail` | ✅ Applied — `set -eo pipefail` (kept install helpers tolerant; `set -u` intentionally deferred) |
+| M3 | Add `set -o pipefail` | ✅ Applied — `set -eo pipefail` (install helpers kept tolerant) |
+| M3b | Add `set -u` (nounset) | ⛔ Won't fix — see below |
 | M4 | `echo \| xargs` trimming | ✅ Fixed — pure-bash `trim()` helper |
+| N2 | Unused loop var `i` | ✅ Fixed — `for _ in $(seq …)` |
+| N3 | Explain why `set -e` is wanted | ✅ Fixed — comment added to all four config sub-scripts |
+| N4 | `MAX_ITEM_NUMBER` menu coupling | ✅ Fixed — "KEEP IN SYNC" comment added |
+| N5 | Homebrew bulk-install speed/noise | ✅ Fixed — `HOMEBREW_NO_AUTO_UPDATE=1` + `HOMEBREW_NO_ENV_HINTS=1` exported up front |
 
-`set -u` (nounset) remains the one deliberately deferred item (see M3), pending a
-dedicated test pass. The original findings are preserved below for reference.
+### ⛔ `set -u` — deliberately NOT enabled (verified)
+
+The script's shebang is `#!/bin/bash`, which on macOS resolves to the built-in
+**bash 3.2.57**. In bash < 4.4, expanding an **empty** array under `set -u`
+(`"${arr[@]}"`) raises `unbound variable` and exits. Verified on this machine:
+
+```
+$ /bin/bash -c 'set -u; declare -a a=(); for x in "${a[@]}"; do :; done'
+/bin/bash: a[@]: unbound variable   # exit 1
+```
+
+The script relies on normally-empty arrays throughout (`SKIP_ITEMS`,
+`CONFIG_KEEP_EXISTING_ITEMS`, `FAILED_ITEMS`, `eligible`, …), so `set -u` would
+abort on the very first `is_skipped` call when nothing is skipped. Enabling it
+would require guarding every empty-array expansion (`"${arr[@]:-}"` / length
+checks) across the whole file for little real benefit (its main value is catching
+unset-variable typos). **Decision: leave `set -u` off** while the target
+interpreter is bash 3.2. Revisit only if the shebang is moved to a bash ≥ 4.4.
+
+The original findings are preserved below for reference.
 
 ---
 

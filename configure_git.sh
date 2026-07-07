@@ -3,6 +3,9 @@
 # Git Configuration Script
 # Sets up Git with user credentials and useful configurations
 
+# set -e is wanted here: this script writes config files, and if a write fails
+# it should stop rather than press on and leave a half-written ~/.gitconfig.
+# (Contrast validate_setup.sh, which deliberately omits it to run every check.)
 set -e
 
 # Colors for output
