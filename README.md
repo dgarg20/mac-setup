@@ -8,7 +8,7 @@ Running `mac_setup.sh` will:
 
 0. Install the Xcode Command Line Tools if they're missing (prerequisite for everything below).
 1. Install Homebrew and a set of CLI tools, browsers, editors, IDEs, and database GUIs.
-2. Install SDKMAN with Java 21 & 25, plus Maven, Gradle, Go, Scala, protoc, and buf.
+2. Install SDKMAN with Java 21 & 25, plus Maven, Gradle, Go, Scala, protoc, buf, and Node.js.
 3. Install the AWS CLI and Apache Kafka.
 4. Configure Zsh (Oh My Zsh, aliases), Git, and SSH (including RSA key setup).
 5. Configure VS Code, Maven, and Gradle.
@@ -69,6 +69,7 @@ All prompts have sensible defaults and are auto-answered in non-interactive shel
 | Scala | JVM language |
 | protoc | Protocol Buffers compiler |
 | buf | Protobuf lint / breaking-change / codegen |
+| Node.js | JavaScript runtime (includes npm) |
 | AWS CLI | Amazon Web Services CLI |
 
 ### Applications (Homebrew casks)

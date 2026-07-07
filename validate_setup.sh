@@ -113,6 +113,8 @@ check_command "go" "Go"
 check_command "scala" "Scala"
 check_command "protoc" "protoc (Protocol Buffers)"
 check_command "buf" "buf"
+check_command "node" "Node.js"
+check_command "npm" "npm"
 
 echo ""
 

@@ -214,6 +214,7 @@ print_menu() {
     echo "      10.4 Scala"
     echo "      10.5 protoc (Protocol Buffers compiler)"
     echo "      10.6 buf (protobuf lint/breaking-change/codegen tooling)"
+    echo "      10.7 Node.js (includes npm)"
     echo "  11. AWS CLI"
     echo "  12. Kafka (download and extract)"
     echo "  13. SSH directory setup (~/.ssh)"
@@ -812,6 +813,13 @@ if is_skipped "10.6"; then
     skip_msg "10.6 buf"
 else
     brew_formula buf "buf" buf
+fi
+
+# 10.7 Node.js (also provides npm)
+if is_skipped "10.7"; then
+    skip_msg "10.7 Node.js"
+else
+    brew_formula node "Node.js" node
 fi
 
 # ==============================================================================
